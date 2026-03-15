@@ -1,0 +1,212 @@
+import express from 'express';
+import { createServer as createViteServer } from 'vite';
+import path from 'path';
+import multer from 'multer';
+import { PDFParse } from 'pdf-parse';
+import * as cheerio from 'cheerio';
+import { GoogleGenAI } from '@google/genai';
+
+const app = express();
+const PORT = 3000;
+
+app.use(express.json());
+
+const upload = multer({ storage: multer.memoryStorage() });
+
+// API Routes
+
+// 1. Parse Resume
+app.post('/api/upload-resume', upload.single('resume'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+    const parser = new PDFParse({ data: req.file.buffer });
+    const data = await parser.getText();
+    await parser.destroy();
+    res.json({ text: data.text });
+  } catch (error) {
+    console.error('Error parsing PDF:', error);
+    res.status(500).json({ error: 'Failed to parse PDF' });
+  }
+});
+
+// 2. Scrape Job URLs
+app.get('/api/jobs', async (req, res) => {
+  try {
+    const url = 'https://www.rwth-aachen.de/cms/root/wir/Karriere/~buym/RWTH-Jobportal/?showall=1';
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to fetch jobs: ${response.status} ${response.statusText}`);
+    }
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    
+    const jobUrls: string[] = [];
+    $('a').each((_, el) => {
+      const href = $(el).attr('href');
+      if (href && href.includes('/go/id/kbag/file/')) {
+         const fullUrl = href.startsWith('http') ? href : `https://www.rwth-aachen.de${href}`;
+         if (!jobUrls.includes(fullUrl)) {
+           jobUrls.push(fullUrl);
+         }
+      }
+    });
+    
+    res.json({ urls: jobUrls });
+  } catch (error) {
+    console.error('Error scraping jobs:', error);
+    res.status(500).json({ error: 'Failed to scrape jobs' });
+  }
+});
+
+// 3. Scrape Job Details
+app.post('/api/jobs/details', async (req, res) => {
+  try {
+    const { urls } = req.body;
+    if (!urls || !Array.isArray(urls)) {
+      return res.status(400).json({ error: 'Invalid URLs array' });
+    }
+
+    const results = await Promise.all(urls.map(async (url) => {
+      try {
+        const response = await fetch(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+          }
+        });
+        if (!response.ok) {
+          throw new Error(`Failed to fetch job details: ${response.status} ${response.statusText}`);
+        }
+        const html = await response.text();
+        const $ = cheerio.load(html);
+        
+        // Extract sections based on common RWTH job posting structure
+        // This might need adjustment based on actual HTML
+        const title = $('h1').first().text().trim() || 'N/A';
+        
+        const extractSection = (headingText: string) => {
+           let content = 'N/A';
+           $('h2, h3, h4').each((_, el) => {
+             if ($(el).text().trim().toLowerCase().includes(headingText.toLowerCase())) {
+               content = $(el).nextUntil('h2, h3, h4').text().trim();
+             }
+           });
+           return content;
+        };
+
+        const srNumberMatch = url.match(/\/file\/([A-Z0-9]+)\/?$/);
+        const srNumber = srNumberMatch ? srNumberMatch[1] : 'N/A';
+
+        return {
+          url,
+          srNumber,
+          title,
+          anbieter: extractSection('Anbieter') || extractSection('Institution'),
+          unserProfil: extractSection('Unser Profil'),
+          ihrProfil: extractSection('Ihr Profil'),
+          ihreAufgaben: extractSection('Ihre Aufgaben'),
+          unserAngebot: extractSection('Unser Angebot'),
+          uberUns: extractSection('Über uns'),
+          bewerbung: extractSection('Bewerbung'),
+          email: extractSection('E-Mail'),
+        };
+      } catch (err) {
+        console.error(`Error scraping ${url}:`, err);
+        return {
+          url,
+          srNumber: 'N/A',
+          title: 'Error',
+          anbieter: 'N/A',
+          unserProfil: 'N/A',
+          ihrProfil: 'N/A',
+          ihreAufgaben: 'N/A',
+          unserAngebot: 'N/A',
+          uberUns: 'N/A',
+          bewerbung: 'N/A',
+          email: 'N/A',
+        };
+      }
+    }));
+
+    res.json({ jobs: results });
+  } catch (error) {
+    console.error('Error scraping job details:', error);
+    res.status(500).json({ error: 'Failed to scrape job details' });
+  }
+});
+
+// 4. Match Jobs with Gemini
+app.post('/api/match-jobs', async (req, res) => {
+  let apiKey = '';
+  try {
+    const { resumeText, jobs, apiKey: reqApiKey } = req.body;
+    if (!resumeText || !jobs || !Array.isArray(jobs)) {
+      return res.status(400).json({ error: 'Invalid input' });
+    }
+
+    apiKey = reqApiKey || process.env.GEMINI_API_KEY || '';
+    if (!apiKey || apiKey === 'undefined') {
+      apiKey = process.env.API_KEY || '';
+    }
+    console.log('API Key length:', apiKey ? apiKey.length : 'undefined');
+    if (!apiKey || apiKey === 'undefined') {
+      console.error('No valid API key found in environment variables or request body');
+      return res.status(500).json({ error: 'API key configuration error' });
+    }
+    const ai = new GoogleGenAI({ apiKey });
+    
+    // Format jobs for prompt
+    const jobsContext = jobs.map((job: any) => `SR Number: ${job.srNumber}\nIhr Profil: ${job.ihrProfil}\nIhre Aufgaben: ${job.ihreAufgaben}`).join('\n\n');
+    
+    const prompt = `Here is a candidate's resume:
+${resumeText}
+
+Here are ${jobs.length} job requirements labeled by their SR Number:
+${jobsContext}
+
+Return ONLY a comma-separated list of the SR Numbers where the candidate's resume is a strong match. Do not output conversational text, just the numbers.`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+    });
+
+    const text = response.text || '';
+    const matchedSrNumbers = text.split(',').map(s => s.trim()).filter(s => s.length > 0);
+
+    res.json({ matchedSrNumbers });
+  } catch (error: any) {
+    console.error('Error matching jobs:', error);
+    if (error.status === 400 && error.message?.includes('API key not valid')) {
+      return res.status(500).json({ error: 'The provided Gemini API key is invalid. Please check your API key configuration.' });
+    }
+    res.status(500).json({ error: 'Failed to match jobs' });
+  }
+});
+
+async function startServer() {
+  if (process.env.NODE_ENV !== 'production') {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: 'spa',
+    });
+    app.use(vite.middlewares);
+  } else {
+    const distPath = path.join(process.cwd(), 'dist');
+    app.use(express.static(distPath));
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
+  }
+
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+}
+
+startServer();
