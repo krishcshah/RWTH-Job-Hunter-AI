@@ -28,6 +28,7 @@ export default function App() {
   
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isScraping, setIsScraping] = useState(false);
+  const [hasScraped, setHasScraped] = useState(false);
   const [scrapeProgress, setScrapeProgress] = useState({ current: 0, total: 0 });
   
   const [isMatching, setIsMatching] = useState(false);
@@ -147,6 +148,7 @@ export default function App() {
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
       }
+      setHasScraped(true);
       return true;
     } catch (err: any) {
       setError(err.message || 'Error scraping jobs');
@@ -333,9 +335,9 @@ export default function App() {
           </div>
 
           {/* Step 2: Scrape */}
-          <div className={`p-6 rounded-2xl shadow-sm border flex flex-col transition-colors ${jobs.length > 0 && !isScraping ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-200'}`}>
+          <div className={`p-6 rounded-2xl shadow-sm border flex flex-col transition-colors ${hasScraped && !isScraping ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-200'}`}>
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              {jobs.length > 0 && !isScraping ? (
+              {hasScraped && !isScraping ? (
                 <CheckCircle className="w-6 h-6 text-emerald-600" />
               ) : (
                 <span className="bg-slate-100 text-slate-600 w-6 h-6 rounded-full flex items-center justify-center text-sm">2</span>
