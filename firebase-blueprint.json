@@ -1,0 +1,64 @@
+{
+  "entities": {
+    "Job": {
+      "title": "Job",
+      "description": "A job listing from RWTH Aachen",
+      "type": "object",
+      "properties": {
+        "srNumber": {
+          "type": "string",
+          "description": "The unique reference number of the job"
+        },
+        "url": {
+          "type": "string",
+          "description": "The URL of the job posting"
+        },
+        "title": {
+          "type": "string",
+          "description": "The job title"
+        },
+        "anbieter": {
+          "type": "string",
+          "description": "The department or provider"
+        },
+        "unserProfil": {
+          "type": "string",
+          "description": "Our profile section"
+        },
+        "ihrProfil": {
+          "type": "string",
+          "description": "Your profile section"
+        },
+        "ihreAufgaben": {
+          "type": "string",
+          "description": "Your tasks section"
+        },
+        "unserAngebot": {
+          "type": "string",
+          "description": "Our offer section"
+        },
+        "uberUns": {
+          "type": "string",
+          "description": "About us section"
+        },
+        "bewerbung": {
+          "type": "string",
+          "description": "Application details section"
+        },
+        "email": {
+          "type": "string",
+          "description": "Contact email"
+        }
+      },
+      "required": ["srNumber", "url", "title"]
+    }
+  },
+  "firestore": {
+    "/jobs/{jobId}": {
+      "schema": {
+        "$ref": "#/entities/Job"
+      },
+      "description": "A collection of scraped jobs"
+    }
+  }
+}

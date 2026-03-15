@@ -2,6 +2,8 @@ import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react'
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule, themeQuartz } from 'ag-grid-community';
 import { Upload, Search, Sparkles, Download, Loader2, AlertCircle, CheckCircle, Filter } from 'lucide-react';
+import { db } from './firebase';
+import { collection, doc, setDoc, onSnapshot } from 'firebase/firestore';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -43,19 +45,24 @@ export default function App() {
 
   const gridRef = useRef<AgGridReact>(null);
 
-  // Load cached jobs on mount
+  // Load jobs from Firestore
   useEffect(() => {
-    const cachedJobsStr = localStorage.getItem('rwth_jobs_cache');
-    if (cachedJobsStr) {
-      try {
-        const cachedJobs = JSON.parse(cachedJobsStr);
-        if (Array.isArray(cachedJobs) && cachedJobs.length > 0) {
-          setJobs(cachedJobs);
-        }
-      } catch (e) {
-        console.error('Failed to parse cached jobs', e);
+    const unsubscribe = onSnapshot(
+      collection(db, 'jobs'),
+      (snapshot) => {
+        const loadedJobs: Job[] = [];
+        snapshot.forEach((doc) => {
+          loadedJobs.push(doc.data() as Job);
+        });
+        setJobs(loadedJobs);
+      },
+      (err) => {
+        console.error('Firestore Error: ', err);
+        setError('Failed to load jobs from database.');
       }
-    }
+    );
+
+    return () => unsubscribe();
   }, []);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,12 +109,9 @@ export default function App() {
         throw new Error('No jobs found on the portal');
       }
 
-      const cachedJobsStr = localStorage.getItem('rwth_jobs_cache');
-      const cachedJobs: Job[] = cachedJobsStr ? JSON.parse(cachedJobsStr) : [];
-      const cachedUrls = new Set(cachedJobs.map(j => j.url));
+      const cachedUrls = new Set(jobs.map(j => j.url));
 
       const newUrls = urls.filter(url => !cachedUrls.has(url));
-      let allJobs = [...cachedJobs];
       
       if (newUrls.length > 0) {
         setScrapeProgress({ current: 0, total: newUrls.length });
@@ -126,18 +130,22 @@ export default function App() {
           if (!detailsResponse.ok) throw new Error('Failed to fetch job details');
           const detailsData = await detailsResponse.json();
           
-          const newJobs = detailsData.jobs;
+          const newJobs: Job[] = detailsData.jobs;
           
-          allJobs.push(...newJobs);
-          setJobs([...allJobs]); // Update UI progressively
-          localStorage.setItem('rwth_jobs_cache', JSON.stringify(allJobs));
+          // Save to Firestore
+          for (const job of newJobs) {
+            try {
+              await setDoc(doc(db, 'jobs', job.srNumber), job);
+            } catch (err) {
+              console.error('Failed to save job to Firestore', err);
+            }
+          }
+          
           setScrapeProgress({ current: Math.min(i + batchSize, newUrls.length), total: newUrls.length });
           
           // Rate limiting: wait 1 second between batches
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
-      } else {
-        setJobs(allJobs);
       }
       return true;
     } catch (err: any) {
@@ -184,7 +192,7 @@ export default function App() {
         const data = await response.json();
         
         allMatched.push(...(data.matchedSrNumbers || []));
-        setRecommendedSrNumbers([...allMatched]);
+        setRecommendedSrNumbers(Array.from(new Set(allMatched)));
         setMatchProgress({ current: Math.min(i + batchSize, jobs.length), total: jobs.length });
       }
       

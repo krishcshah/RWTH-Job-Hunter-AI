@@ -4,7 +4,7 @@ import path from 'path';
 import multer from 'multer';
 import { PDFParse } from 'pdf-parse';
 import * as cheerio from 'cheerio';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, Type } from '@google/genai';
 
 const app = express();
 const PORT = 3000;
@@ -169,15 +169,32 @@ ${resumeText}
 Here are ${jobs.length} job requirements labeled by their SR Number:
 ${jobsContext}
 
-Return ONLY a comma-separated list of the SR Numbers where the candidate's resume is a strong match. Do not output conversational text, just the numbers.`;
+Return an array of the SR Numbers where the candidate's resume is a strong match.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.STRING
+          }
+        }
+      }
     });
 
-    const text = response.text || '';
-    const matchedSrNumbers = text.split(',').map(s => s.trim()).filter(s => s.length > 0);
+    let matchedSrNumbers: string[] = [];
+    try {
+      matchedSrNumbers = JSON.parse(response.text || '[]');
+    } catch (e) {
+      console.error('Failed to parse JSON response', e);
+    }
+    
+    // Filter out any hallucinated SR numbers
+    const validSrNumbers = jobs.map((j: any) => j.srNumber);
+    matchedSrNumbers = matchedSrNumbers.filter(sr => validSrNumbers.includes(sr));
 
     res.json({ matchedSrNumbers });
   } catch (error: any) {

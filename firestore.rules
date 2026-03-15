@@ -1,0 +1,69 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: jobs
+    // Document ID: srNumber
+    // Fields:
+    //   - srNumber: string (required) - The unique reference number of the job
+    //   - url: string (required) - The URL of the job posting
+    //   - title: string (required) - The job title
+    //   - anbieter: string (optional) - The department or provider
+    //   - unserProfil: string (optional) - Our profile section
+    //   - ihrProfil: string (optional) - Your profile section
+    //   - ihreAufgaben: string (optional) - Your tasks section
+    //   - unserAngebot: string (optional) - Our offer section
+    //   - uberUns: string (optional) - About us section
+    //   - bewerbung: string (optional) - Application details section
+    //   - email: string (optional) - Contact email
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function isValidOptionalString(field, maxLen) {
+      return !(field in request.resource.data) ||
+             (request.resource.data[field] is string &&
+              request.resource.data[field].size() <= maxLen);
+    }
+
+    // Domain Validator
+    function isValidJob() {
+      return hasRequiredFields(['srNumber', 'url', 'title']) &&
+             request.resource.data.srNumber is string && request.resource.data.srNumber.size() > 0 && request.resource.data.srNumber.size() < 100 &&
+             request.resource.data.url is string && request.resource.data.url.size() > 0 && request.resource.data.url.size() < 2000 &&
+             request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() < 1000 &&
+             isValidOptionalString('anbieter', 1000) &&
+             isValidOptionalString('unserProfil', 50000) &&
+             isValidOptionalString('ihrProfil', 50000) &&
+             isValidOptionalString('ihreAufgaben', 50000) &&
+             isValidOptionalString('unserAngebot', 50000) &&
+             isValidOptionalString('uberUns', 50000) &&
+             isValidOptionalString('bewerbung', 50000) &&
+             isValidOptionalString('email', 1000);
+    }
+
+    match /jobs/{jobId} {
+      // Allow public read access as requested by the user
+      allow read: if true;
+      // Allow public create/update for the shared scraped cache, but validate data
+      allow create: if isValidJob();
+      allow update: if isValidJob();
+      // Prevent public deletion to protect the database
+      allow delete: if false;
+    }
+  }
+}
