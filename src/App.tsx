@@ -177,7 +177,7 @@ export default function App() {
     setRecommendedSrNumbers([]);
     
     try {
-      const batchSize = 10;
+      const batchSize = 5;
       const allMatched: string[] = [];
       setMatchProgress({ current: 0, total: jobs.length });
       
