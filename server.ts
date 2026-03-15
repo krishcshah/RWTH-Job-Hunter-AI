@@ -17,6 +17,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 // 1. Parse Resume
 app.post('/api/upload-resume', upload.single('resume'), async (req, res) => {
+  console.log('Received upload-resume request');
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
