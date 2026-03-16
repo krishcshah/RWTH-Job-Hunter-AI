@@ -97,14 +97,12 @@ export default function App() {
       
       if (!response.ok) {
         let errorMsg = `Server error: ${response.status} ${response.statusText}`;
+        const text = await response.text().catch(() => '');
         try {
-          const errorData = await response.json();
+          const errorData = JSON.parse(text);
           if (errorData.error) errorMsg = errorData.error;
         } catch (e) {
-          try {
-            const text = await response.text();
-            if (text) errorMsg += ` - ${text.substring(0, 100)}`;
-          } catch (e2) {}
+          if (text) errorMsg += ` - ${text.substring(0, 100)}`;
         }
         throw new Error(errorMsg);
       }

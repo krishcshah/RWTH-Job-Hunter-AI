@@ -15,13 +15,23 @@ const upload = multer({ storage: multer.memoryStorage() });
 // API Routes
 
 // 1. Parse Resume
-app.post('/api/upload-resume', upload.single('resume'), async (req, res) => {
+app.post('/api/upload-resume', (req, res, next) => {
+  upload.single('resume')(req, res, (err) => {
+    if (err) {
+      console.error('Multer error:', err);
+      return res.status(400).json({ error: `Upload error: ${err.message}` });
+    }
+    next();
+  });
+}, async (req, res) => {
   console.log('Received upload-resume request');
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
-    const parser = new PDFParse({ data: req.file.buffer });
+    // Create a copy of the buffer to prevent ArrayBuffer detachment issues when pdf.js transfers it to a worker
+    const fileData = new Uint8Array(req.file.buffer);
+    const parser = new PDFParse({ data: fileData });
     const data = await parser.getText();
     await parser.destroy();
     res.json({ text: data.text });
