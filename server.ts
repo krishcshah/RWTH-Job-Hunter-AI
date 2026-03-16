@@ -25,9 +25,9 @@ app.post('/api/upload-resume', upload.single('resume'), async (req, res) => {
     const data = await parser.getText();
     await parser.destroy();
     res.json({ text: data.text });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error parsing PDF:', error);
-    res.status(500).json({ error: 'Failed to parse PDF' });
+    res.status(500).json({ error: error.message || 'Failed to parse PDF' });
   }
 });
 

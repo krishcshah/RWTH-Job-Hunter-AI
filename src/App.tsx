@@ -71,6 +71,16 @@ export default function App() {
     const file = event.target.files?.[0];
     if (!file) return;
     
+    if (file.size > 5 * 1024 * 1024) {
+      setError('File is too large. Please upload a PDF smaller than 5MB.');
+      return;
+    }
+    
+    if (file.type !== 'application/pdf') {
+      setError('Please upload a valid PDF file.');
+      return;
+    }
+    
     setResumeFile(file);
     setIsUploading(true);
     setError(null);
@@ -85,7 +95,19 @@ export default function App() {
         body: formData,
       });
       
-      if (!response.ok) throw new Error('Failed to parse resume');
+      if (!response.ok) {
+        let errorMsg = `Server error: ${response.status} ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          if (errorData.error) errorMsg = errorData.error;
+        } catch (e) {
+          try {
+            const text = await response.text();
+            if (text) errorMsg += ` - ${text.substring(0, 100)}`;
+          } catch (e2) {}
+        }
+        throw new Error(errorMsg);
+      }
       
       const data = await response.json();
       setResumeText(data.text);
