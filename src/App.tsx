@@ -40,6 +40,7 @@ export default function App() {
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const [shouldAutoScrape, setShouldAutoScrape] = useState(false);
   const [shouldAutoMatch, setShouldAutoMatch] = useState(false);
@@ -73,6 +74,7 @@ export default function App() {
     setResumeFile(file);
     setIsUploading(true);
     setError(null);
+    setSuccessMessage(null);
     
     const formData = new FormData();
     formData.append('resume', file);
@@ -98,6 +100,7 @@ export default function App() {
   const handleScrapeJobs = async () => {
     setIsScraping(true);
     setError(null);
+    setSuccessMessage(null);
     
     try {
       // 1. Get all job URLs
@@ -113,6 +116,12 @@ export default function App() {
       const cachedUrls = new Set(jobs.map(j => j.url));
 
       const newUrls = urls.filter(url => !cachedUrls.has(url));
+      
+      if (newUrls.length === 0) {
+        setSuccessMessage('All jobs fetched');
+        setHasScraped(true);
+        return true;
+      }
       
       if (newUrls.length > 0) {
         setScrapeProgress({ current: 0, total: newUrls.length });
@@ -148,6 +157,7 @@ export default function App() {
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
       }
+      setSuccessMessage('All jobs fetched');
       setHasScraped(true);
       return true;
     } catch (err: any) {
@@ -159,6 +169,7 @@ export default function App() {
   };
 
   const handleMatchJobs = async () => {
+    setSuccessMessage(null);
     if (!resumeText) {
       setError('Please upload a resume first.');
       return;
@@ -425,6 +436,14 @@ export default function App() {
           <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl flex items-start gap-3">
             <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
             <p className="text-sm font-medium">{error}</p>
+          </div>
+        )}
+
+        {/* Success Display */}
+        {successMessage && (
+          <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 p-4 rounded-xl flex items-start gap-3">
+            <CheckCircle className="w-5 h-5 shrink-0 mt-0.5" />
+            <p className="text-sm font-medium">{successMessage}</p>
           </div>
         )}
 
