@@ -1,5 +1,4 @@
 import express from 'express';
-import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import multer from 'multer';
 import { PDFParse } from 'pdf-parse';
@@ -218,6 +217,8 @@ Analyze the resume against each job requirement. You MUST return ONLY a valid JS
 
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
+    const viteModule = 'vite';
+    const { createServer: createViteServer } = await import(viteModule);
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
@@ -231,9 +232,13 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+  if (process.env.VERCEL !== '1') {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  }
 }
 
 startServer();
+
+export default app;
