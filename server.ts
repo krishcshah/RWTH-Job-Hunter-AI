@@ -170,27 +170,36 @@ ${resumeText}
 Here are ${jobs.length} job requirements labeled by their SR Number:
 ${jobsContext}
 
-Return an array of the SR Numbers where the candidate's resume is a strong match.`;
+Analyze the resume against each job requirement. You MUST return ONLY a valid JSON object with a single property "matchedSrNumbers" containing an array of strings representing the SR Numbers of the jobs that are a strong match. Do not include any markdown formatting, explanations, or other text.`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-3.1-flash-lite-preview',
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
         responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.STRING
-          }
+          type: Type.OBJECT,
+          properties: {
+            matchedSrNumbers: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.STRING
+              },
+              description: "An array of the SR Numbers where the candidate's resume is a strong match."
+            }
+          },
+          required: ["matchedSrNumbers"]
         }
       }
     });
 
     let matchedSrNumbers: string[] = [];
     try {
-      matchedSrNumbers = JSON.parse(response.text || '[]');
+      const parsed = JSON.parse(response.text || '{}');
+      matchedSrNumbers = parsed.matchedSrNumbers || [];
     } catch (e) {
       console.error('Failed to parse JSON response', e);
+      console.error('Raw response text:', response.text);
     }
     
     // Filter out any hallucinated SR numbers
