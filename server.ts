@@ -106,8 +106,8 @@ app.post('/api/jobs/details', async (req, res) => {
            return content;
         };
 
-        const srNumberMatch = url.match(/\/file\/([A-Z0-9]+)\/?$/);
-        const srNumber = srNumberMatch ? srNumberMatch[1] : 'N/A';
+        const srNumberMatch = url.match(/\/file\/([A-Z0-9]+)/);
+        const srNumber = srNumberMatch ? srNumberMatch[1] : `UNKNOWN-${Math.random().toString(36).substring(2, 8)}`;
 
         return {
           url,

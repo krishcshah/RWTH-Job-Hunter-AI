@@ -146,29 +146,39 @@ export default function App() {
       if (newUrls.length > 0) {
         setScrapeProgress({ current: 0, total: newUrls.length });
         
-        // 2. Scrape details in batches to avoid overwhelming the server/target
-        const batchSize = 10;
+        // 2. Scrape details in batches to avoid overwhelming the server/target framework limits
+        const batchSize = 3;
         
         for (let i = 0; i < newUrls.length; i += batchSize) {
           const batchUrls = newUrls.slice(i, i + batchSize);
-          const detailsResponse = await fetch('/api/jobs/details', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ urls: batchUrls }),
-          });
-          
-          if (!detailsResponse.ok) throw new Error('Failed to fetch job details');
-          const detailsData = await detailsResponse.json();
-          
-          const newJobs: Job[] = detailsData.jobs;
-          
-          // Save to Firestore
-          for (const job of newJobs) {
-            try {
-              await setDoc(doc(db, 'jobs', job.srNumber), job);
-            } catch (err) {
-              console.error('Failed to save job to Firestore', err);
+          try {
+            const detailsResponse = await fetch('/api/jobs/details', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ urls: batchUrls }),
+            });
+            
+            if (!detailsResponse.ok) {
+              console.warn(`Failed to fetch batch ${i}, status: ${detailsResponse.status}`);
+              continue; // Skip this batch but keep scraping others
             }
+            const detailsData = await detailsResponse.json();
+            
+            const newJobs: Job[] = detailsData.jobs;
+            
+            // Save to Firestore
+            for (const job of newJobs) {
+              try {
+                if (job.srNumber && !job.srNumber.startsWith('UNKNOWN-')) {
+                  await setDoc(doc(db, 'jobs', job.srNumber), job);
+                }
+              } catch (err) {
+                console.error('Failed to save job to Firestore', err);
+              }
+            }
+          } catch (batchErr) {
+            console.error(`Error in batch ${i}`, batchErr);
+            // continue with next batch
           }
           
           setScrapeProgress({ current: Math.min(i + batchSize, newUrls.length), total: newUrls.length });
