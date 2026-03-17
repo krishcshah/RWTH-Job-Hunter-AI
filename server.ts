@@ -1,7 +1,7 @@
 import express from 'express';
 import path from 'path';
 import multer from 'multer';
-import { PDFParse } from 'pdf-parse';
+import pdfParse from 'pdf-parse-new';
 import * as cheerio from 'cheerio';
 import { GoogleGenAI, Type } from '@google/genai';
 
@@ -30,10 +30,7 @@ app.post('/api/upload-resume', (req, res, next) => {
       return res.status(400).json({ error: 'No file uploaded' });
     }
     // Create a copy of the buffer to prevent ArrayBuffer detachment issues when pdf.js transfers it to a worker
-    const fileData = new Uint8Array(req.file.buffer);
-    const parser = new PDFParse({ data: fileData });
-    const data = await parser.getText();
-    await parser.destroy();
+    const data = await pdfParse(req.file.buffer);
     res.json({ text: data.text });
   } catch (error: any) {
     console.error('Error parsing PDF:', error);
