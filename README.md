@@ -66,3 +66,6 @@ Open your browser and navigate to the local URL provided in your terminal (typic
 3. Click the "Scrape Jobs" button to fetch the latest listings from the RWTH portal.
 4. Once the jobs are loaded, click "Match Jobs" to run the AI analysis.
 5. Use the grid controls to filter, sort, and review your recommended jobs.
+
+### License
+MIT
