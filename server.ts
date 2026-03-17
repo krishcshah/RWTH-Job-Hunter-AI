@@ -168,7 +168,7 @@ app.post('/api/match-jobs', async (req, res) => {
     const ai = new GoogleGenAI({ apiKey });
     
     // Format jobs for prompt
-    const jobsContext = jobs.map((job: any) => `SR Number: ${job.srNumber}\nIhr Profil: ${job.ihrProfil}\nIhre Aufgaben: ${job.ihreAufgaben}`).join('\n\n');
+    const jobsContext = jobs.map((job: any) => `SR Number: ${job.srNumber}\nUnser Profil: ${job.unserProfil}\nIhr Profil: ${job.ihrProfil}\nIhre Aufgaben: ${job.ihreAufgaben}`).join('\n\n');
     
     const prompt = `Here is a candidate's resume:
 ${resumeText}
@@ -176,7 +176,7 @@ ${resumeText}
 Here are ${jobs.length} job requirements labeled by their SR Number:
 ${jobsContext}
 
-Analyze the resume against each job requirement. You MUST return ONLY a valid JSON object with a single property "matchedSrNumbers" containing an array of strings representing the SR Numbers of the jobs that are a strong match. Do not include any markdown formatting, explanations, or other text.`;
+Analyze the resume against each job requirement. It is necessary that you check all details accuratly, do not reecomend jobs that the person is unqualified for or do not reccomend jobs that do not match well with the reusme text. You MUST return ONLY a valid JSON object with a single property "matchedSrNumbers" containing an array of strings representing the SR Numbers of the jobs that are a strong match. Do not include any markdown formatting, explanations, or other text.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-3.1-flash-lite-preview',
