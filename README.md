@@ -2,6 +2,9 @@
 
 This application automates the process of finding relevant job openings at RWTH Aachen University. It scrapes current job listings, parses your uploaded resume, and uses a large language model to recommend positions that match your skills and experience.
 
+## Video Demo:
+https://youtu.be/Vz6nBYi11rU
+
 ## How It Works
 
 The application operates in three main phases:
@@ -66,6 +69,13 @@ Open your browser and navigate to the local URL provided in your terminal (typic
 3. Click the "Scrape Jobs" button to fetch the latest listings from the RWTH portal.
 4. Once the jobs are loaded, click "Match Jobs" to run the AI analysis.
 5. Use the grid controls to filter, sort, and review your recommended jobs.
+
+### Notes & Clarifications:
+1. Since this demo was recorded, the matching algorithm and prompts have been significantly improved, resulting in more accurate job recommendations.
+2. The application does not collect or store any personal data. In particular, contact details (e.g., email addresses) have been intentionally excluded to ensure compliance with GDPR principles.
+3. The tool processes only publicly available job listings that are accessible without authentication or login.
+4. To minimize RWTH server load and ensure responsible usage, the live version of the application operates primarily on a personally hosted Firebase dataset, rather than continuously querying the RWTH job portal.
+5. This project was developed as a personal learning and research exercise. It is not intended for commercial use, data resale, or any form of exploitation of RWTH Aachen systems or content.
 
 ### License
 MIT
