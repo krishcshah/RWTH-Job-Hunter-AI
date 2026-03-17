@@ -62,8 +62,8 @@ service cloud.firestore {
       // Allow public create/update for the shared scraped cache, but validate data
       allow create: if isValidJob();
       allow update: if isValidJob();
-      // Prevent public deletion to protect the database
-      allow delete: if false;
+      // Allow public deletion to facilitate the live demo reset
+      allow delete: if true;
     }
   }
 }

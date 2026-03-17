@@ -1,9 +1,9 @@
 import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule, themeQuartz } from 'ag-grid-community';
-import { Upload, Search, Sparkles, Download, Loader2, AlertCircle, CheckCircle, Filter } from 'lucide-react';
+import { Upload, Search, Sparkles, Download, Loader2, AlertCircle, CheckCircle, Filter, Trash2 } from 'lucide-react';
 import { db } from './firebase';
-import { collection, doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { collection, doc, setDoc, onSnapshot, getDocs, deleteDoc } from 'firebase/firestore';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -39,6 +39,8 @@ export default function App() {
   const [apiKey, setApiKey] = useState<string>('');
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -195,6 +197,43 @@ export default function App() {
       return false;
     } finally {
       setIsScraping(false);
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    const password = window.prompt("Enter password to clear the database for a live demo:");
+    if (!password) return;
+
+    try {
+      setIsDeleting(true);
+      setError(null);
+      setSuccessMessage(null);
+
+      // Verify password via backend endpoint
+      const authRes = await fetch('/api/verify-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      });
+      
+      if (!authRes.ok) {
+        throw new Error('Incorrect password. Access denied.');
+      }
+
+      const snapshot = await getDocs(collection(db, 'jobs'));
+      const deletePromises = snapshot.docs.map(docSnapshot => 
+        deleteDoc(doc(db, 'jobs', docSnapshot.id))
+      );
+      
+      await Promise.all(deletePromises);
+      setSuccessMessage(`Successfully deleted ${deletePromises.length} jobs.`);
+      setHasScraped(false);
+      setJobs([]);
+      
+    } catch (err: any) {
+      setError(err.message || 'Error deleting jobs');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -386,15 +425,26 @@ export default function App() {
               Scrape Job Board
             </h2>
             <div className="flex-1 flex flex-col justify-center space-y-4">
-              <button
-                onClick={handleScrapeJobs}
-                disabled={isScraping}
-                className="w-full py-3 px-4 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-              >
-                {isScraping ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
-                {isScraping ? 'Scraping...' : 'Fetch RWTH Jobs'}
-              </button>
-              
+              <div className="flex gap-2">
+                <button
+                  onClick={handleScrapeJobs}
+                  disabled={isScraping || isDeleting}
+                  className="w-full py-3 px-4 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                >
+                  {isScraping ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
+                  {isScraping ? 'Scraping...' : 'Fetch RWTH Jobs'}
+                </button>
+  
+                <button
+                  onClick={handleDeleteAll}
+                  disabled={isScraping || isDeleting}
+                  title="Wipe database"
+                  className="py-3 px-4 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isDeleting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
+                </button>
+              </div>
+
               {isScraping && scrapeProgress.total > 0 && (
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs font-medium text-slate-500">

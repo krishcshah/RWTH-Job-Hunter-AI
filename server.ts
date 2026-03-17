@@ -222,6 +222,18 @@ Analyze the resume against each job requirement. You MUST return ONLY a valid JS
   }
 });
 
+// 5. Verify password for database deletion
+app.post('/api/verify-password', (req, res) => {
+  const { password } = req.body;
+  const expectedPassword = process.env.DELETE_PASSWORD || 'cbyk@902';
+  
+  if (password === expectedPassword) {
+    res.json({ valid: true });
+  } else {
+    res.status(401).json({ error: 'Incorrect password' });
+  }
+});
+
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
     const viteModule = 'vite';
