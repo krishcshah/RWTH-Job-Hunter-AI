@@ -349,6 +349,7 @@ export default function App() {
       )
     },
     { headerName: 'Anbieter', field: 'anbieter', width: 200, filter: 'agTextColumnFilter' },
+    { headerName: 'Unser Profil', field: 'unserProfil', width: 400, tooltipField: 'unserProfil' },
     { headerName: 'Ihr Profil', field: 'ihrProfil', width: 400, tooltipField: 'ihrProfil' },
     { headerName: 'Ihre Aufgaben', field: 'ihreAufgaben', width: 400, tooltipField: 'ihreAufgaben' },
     { headerName: 'Unser Angebot', field: 'unserAngebot', width: 300 },
