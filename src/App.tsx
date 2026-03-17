@@ -354,7 +354,6 @@ export default function App() {
     { headerName: 'Unser Angebot', field: 'unserAngebot', width: 300 },
     { headerName: 'Über uns', field: 'uberUns', width: 300 },
     { headerName: 'Bewerbung', field: 'bewerbung', width: 200 },
-    { headerName: 'E-Mail', field: 'email', width: 200 },
   ], []);
 
   const defaultColDef = useMemo(() => ({
