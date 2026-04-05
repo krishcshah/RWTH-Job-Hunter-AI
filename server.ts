@@ -176,7 +176,7 @@ ${resumeText}
 Here are ${jobs.length} job requirements labeled by their SR Number:
 ${jobsContext}
 
-Analyze the resume against each job requirement. It is necessary that you check all details accuratly, do not reecomend jobs that the person is unqualified for or do not reccomend jobs that do not match well with the reusme text. You MUST return ONLY a valid JSON object with a single property "matchedSrNumbers" containing an array of strings representing the SR Numbers of the jobs that are a strong match. Do not include any markdown formatting, explanations, or other text.`;
+Analyze the resume against each job requirement. It is necessary that you check all details accuratly, do not reecomend jobs that the user is unqualified for or do not reccomend jobs that do not match well with the reusme text. Example: Many of the jobs are for research associates and they require a completed university masters degree if the user themselves are still presently doing a masters degree do not return such jobs back even if other aspects match. Be strict with qualification criteria. You MUST return ONLY a valid JSON object with a single property "matchedSrNumbers" containing an array of strings representing the SR Numbers of the jobs that are a strong match. Do not include any markdown formatting, explanations, or other text.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-3.1-flash-lite-preview',
